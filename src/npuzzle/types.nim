@@ -2,7 +2,7 @@ type
   Gfunc* {.pure.} = enum
     Astar = "a"
     Greedy = "g"
-    Uniform = "u"
+    Uniform = "u" # Dijkstra's Algorithm
 
   Hfunc* {.pure.} = enum
     Manhattan = "m"
@@ -23,3 +23,4 @@ type
     numOfMoves: int
     solutionPath: seq[Tails]
 
+  TailPos* = tuple[row, col: int]

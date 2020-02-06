@@ -18,7 +18,6 @@ proc main() =
     if not p.isSolvable:
       quit unsolvableMsg(), QuitSuccess # TODO: maybe change on QuitFailure
 
-    echo p
     var i: NPuzzleInfo
     solve(p, ss, i)
     #i.show()
