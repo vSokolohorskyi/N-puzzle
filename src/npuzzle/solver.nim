@@ -1,4 +1,4 @@
-import deques, sets, hashes
+import deques, sets, hashes, tables
 import types
 
 proc even(n: int): bool = n mod 2 == 0
@@ -60,17 +60,14 @@ iterator neighbors(p: NPuzzle): NPuzzle =
 
 proc print(p: NPuzzle) =
   # temporary, only for 8-puzzle
+  echo "//\\"
+  echo "||"
   echo "[", p.tails[0], "," ,p.tails[1], ",", p.tails[2], "]"
   echo "[", p.tails[3], "," ,p.tails[4], ",", p.tails[5], "]"
   echo "[", p.tails[6], "," ,p.tails[7], ",", p.tails[8], "]"
-  echo "||"
-  echo "\\/"
 
 proc `==`(a,b: NPuzzle): bool = a.tails == b.tails
 proc `!=`(a,b: NPuzzle): bool = not (a == b)
-
-#proc hash(p: NPuzzle): Hash =
-#  !$(hash(p.tails))
 
 proc getGoal(p: NPuzzle): NPuzzle =
   result.width = p.width
@@ -80,14 +77,23 @@ proc solve*(p: NPuzzle, ss: NPuzzleSettings, i: var NPuzzleInfo) =
   var dq = initDeque[NPuzzle]()
   dq.addFirst p
 
-  var v = initHashSet[NPuzzle]()
-  v.incl p
-
+  var cf = initTable[NPuzzle, NPuzzle]()
   let g = p.getGoal
   while dq.len > 0:
     let c = dq.popFirst
-    if c == g: return
+    if c == g:
+      break
     for n in c.neighbors:
-      if v.containsOrIncl(n):
+      if not cf.hasKey(n):
         dq.addLast n
+        cf[n] = c
+
+  var c = g
+  var path: seq[NPuzzle]
+  while c != p:
+    path.add cf[c]
+    c = cf[c]
+
+  for p in path:
+    p.print
 
