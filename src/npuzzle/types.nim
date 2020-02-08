@@ -9,13 +9,14 @@ type
 
   NPuzzleSettings* = tuple
     g: Gfunc
-    hs: set[Hfunc]
+    h: Hfunc
 
   Tails = seq[int]
 
   NPuzzle* = tuple
     width: int
     tails: Tails
+    priority: int
 
   NPuzzleInfo* = tuple
     totalStates: int # complexity in time

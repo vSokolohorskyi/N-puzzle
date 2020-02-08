@@ -9,9 +9,7 @@ proc getSettings*(ss: var NPuzzleSettings, k: string, v: string) =
     if v != $ss.g:
       ss.g = parseEnum[Gfunc](v)
   elif k == "h" and v in hfuncs:
-     let h = parseEnum[Hfunc](v)
-     if h notin ss.hs:
-       ss.hs.incl h
+     ss.h = parseEnum[Hfunc](v)
 
 proc isValid*(p: NPuzzle): bool =
   if p.tails.len mod p.width != 0:
