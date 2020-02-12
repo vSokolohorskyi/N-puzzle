@@ -1,14 +1,18 @@
 import os
 
-import input_parser
-import npuzzle / [parser, solver, types]
+import src / [input_parser, parser, solver, types]
 
 template helpMsg: string =
-  "Usage: ./npuzzle -h(help) -h:[m|h|lcm|e](-heuristic:type) file"
-template invalidMsg: string =
-  "Invalid puzzle"
-template unsolvableMsg: string =
-  "Unsolvable puzzle"
+  """Usage: ./npuzzle -h:[m|h|lcm|e](-heuristic:type) file
+Where:
+     m: Manhattan
+     h: Hemming
+     lcm: Linear conflicts + Manhattan
+     e: Euclidean
+  """
+
+template invalidMsg: string = "Invalid puzzle"
+template unsolvableMsg: string = "Unsolvable puzzle"
 
 proc main() =
   try:
