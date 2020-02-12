@@ -136,11 +136,11 @@ proc show*(i: NPuzzleInfo) =
 
 proc solve*(s: NPuzzle, ss: NPuzzleSettings, i: var NPuzzleInfo) =
   const
-    depthLimit = 60
-    nodeLimit = 600_000
+    depthLimit = 100
+    nodeLimit = 60
 
-  var hq = initHeapQueue[NPuzzle]()
-  hq.push s
+  var openSet = initHeapQueue[NPuzzle]()
+  openSet.push s
 
   var costSoFar = initTable[NPuzzle, int]()
   costSoFar[s] = 0
@@ -149,12 +149,12 @@ proc solve*(s: NPuzzle, ss: NPuzzleSettings, i: var NPuzzleInfo) =
   cameFrom[s] = (0, @[], 0)
 
   var g = s.getGoal
-  while hq.len > 0:
+  while openSet.len > 0:
     inc i.totalStates
-    if i.maxStates < hq.len:
-      i.maxStates = hq.len
+    if i.maxStates < openSet.len:
+      i.maxStates = openSet.len
 
-    let c = hq.pop
+    let c = openSet.pop
 
     if c == g:
       g = c
@@ -163,17 +163,25 @@ proc solve*(s: NPuzzle, ss: NPuzzleSettings, i: var NPuzzleInfo) =
     if costSoFar[c] + 1 == depthLimit:
       quit "Height limit exceeded!"
 
-    if costSoFar.len == nodeLimit:
-      quit "Node limit exceeded!"
+    if openSet.len == nodeLimit:
+      while openSet.len > 1:
+        openSet.del(openSet.len - 1)
 
     for n in c.neighbors:
       var nn = n
       let gScore = costSoFar[c] + 1
       if not costSoFar.hasKey(nn) or gScore < costSoFar[nn]:
-        nn.priority = gScore + heuristic(n, ss.h)
+        case ss.g:
+        of Astar:
+          nn.priority = gScore + heuristic(n, ss.h)
+        of Greedy:
+          nn.priority = heuristic(n, ss.h)
+        of Uniform:
+          nn.priority = gScore
+        nn.priority
         costSoFar[nn] = gScore
         cameFrom[nn] = c
-        hq.push nn
+        openSet.push nn
 
   var c = g
   i.width = s.width

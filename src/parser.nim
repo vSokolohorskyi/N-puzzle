@@ -2,7 +2,7 @@ import strutils, pegs, sequtils, algorithm
 import types
 
 proc getSettings*(ss: var NPuzzleSettings, k: string, v: string) =
-  let gfuncs = [$Astar]
+  let gfuncs = [$Astar, $Greedy, $Uniform]
   let hfuncs = [$Manhattan, $Hamming, $LcManhattan, $Euclidean]
 
   if k == "g" and v in gfuncs:
