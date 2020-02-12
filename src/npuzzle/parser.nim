@@ -2,8 +2,8 @@ import strutils, pegs, sequtils, algorithm
 import types
 
 proc getSettings*(ss: var NPuzzleSettings, k: string, v: string) =
-  let gfuncs = [$Astar, $Greedy, $Uniform]
-  let hfuncs = [$Manhattan]
+  let gfuncs = [$Astar]
+  let hfuncs = [$Manhattan, $Hamming, $LcManhattan, $Euclidean]
 
   if k == "g" and v in gfuncs:
     if v != $ss.g:
@@ -12,7 +12,7 @@ proc getSettings*(ss: var NPuzzleSettings, k: string, v: string) =
      ss.h = parseEnum[Hfunc](v)
 
 proc isValid*(p: NPuzzle): bool =
-  if p.tails.len mod p.width != 0:
+  if p.width <= 0 or p.tails.len mod p.width != 0:
     return false
 
   var ts = p.tails
@@ -31,7 +31,6 @@ proc isValid*(p: NPuzzle): bool =
   return true
 
 proc getRawTails(str: string): seq[string] =
-  # TODO: use pegs
   result = str.split("#")[0].split(" ")
   result.keepIf do(x: string) -> bool:
     x != ""
@@ -46,7 +45,7 @@ proc getTails(str: string): seq[int] =
 
 proc parseNPuzzle*(f: File): NPuzzle =
   if f.isNil:
-    return
+    raise newException(IoError, "There is no file to read from!")
 
   for line in f.lines:
     let nn = line.getTails

@@ -1,17 +1,22 @@
+import deques
 type
   Gfunc* {.pure.} = enum
     Astar = "a"
     Greedy = "g"
-    Uniform = "u" # Dijkstra's Algorithm
+    Uniform = "u"
 
   Hfunc* {.pure.} = enum
     Manhattan = "m"
+    Hamming = "h"
+    LcManhattan = "lcm"
+    Euclidean = "e"
 
   NPuzzleSettings* = tuple
     g: Gfunc
     h: Hfunc
 
-  Tails = seq[int]
+  TailPos* = tuple[row, col: int]
+  Tails* = seq[int]
 
   NPuzzle* = tuple
     width: int
@@ -19,9 +24,8 @@ type
     priority: int
 
   NPuzzleInfo* = tuple
-    totalStates: int # complexity in time
-    maxStates: int # complexity in size(taken memory)
-    numOfMoves: int
-    solutionPath: seq[Tails]
+    width: int
+    totalStates: int
+    maxStates: int
+    path: Deque[NPuzzle]
 
-  TailPos* = tuple[row, col: int]
