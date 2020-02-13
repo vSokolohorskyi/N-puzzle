@@ -1,4 +1,4 @@
-import deques, hashes, tables, heapqueue, algorithm, math
+import deques, hashes, tables, heapqueue, algorithm, math, streams
 import types
 
 proc even(n: int): bool = n mod 2 == 0
@@ -84,12 +84,14 @@ proc manhattan(n: NPuzzle, t,r,c,w: int): int =
 proc lcAux(n: NPuzzle, t,r,c,w: int): int =
   var rr = 0
   var cc = 0
+  let tr = getRow(t, w)
+  let tc = getCol(t, w)
   for i, tt in n.tails:
     if tt != 0 and t != tt:
       if c == cc or r == rr:
-        if getRow(t, w) == getRow(tt, w) or getCol(t, w) == getCol(tt, w):
+        if tr == getRow(tt, w) or tc == getCol(tt, w):
           if r * w + c > rr * w + cc and
-             getRow(t,w) * w + getCol(t,w) < getRow(tt,w) * w + getCol(tt,w):
+             tr * w + tc < getRow(tt,w) * w + getCol(tt,w):
             inc result
 
 proc lcmanhattan(n: NPuzzle, t,r,c,w: int): int =
@@ -98,7 +100,7 @@ proc lcmanhattan(n: NPuzzle, t,r,c,w: int): int =
 proc euclidean(n: NPuzzle, t,r,c,w: int): int =
   (r - getRow(t, w))^2 + (c - getCol(t, w))^2
 
-proc hamming(n: NPuzzle, t,r,c,w: int): int = 1
+proc hamming(n: NPuzzle, t,r,c,w: int): int  = 1
 
 proc core(n: NPuzzle, p: proc(n: NPuzzle, t, r, c, w: int): int): int =
   var r, c = 0
@@ -111,83 +113,63 @@ proc core(n: NPuzzle, p: proc(n: NPuzzle, t, r, c, w: int): int): int =
     else:
       inc c
 
-proc heuristic(n: NPuzzle, h: Hfunc): int =
+proc hScore(n: NPuzzle, h: Hfunc): int {.inline.} =
   let hs = [($Manhattan, manhattan), ($LcManhattan, lcmanhattan),
             ($Euclidean, euclidean), ($Hamming, hamming)]
   for (k, p) in hs:
     if k == $h:
       return core(n, p)
 
-proc showPath(info: NPuzzleInfo) =
-  var line = ""
+proc show*(info: NPuzzleInfo) =
+  var strm = newFileStream("solution.txt", fmWrite)
+  strm.write("Moves: ", info.path.len - 1, "\n")
+  strm.write("Total number of states: ", info.totalStates, "\n")
+  strm.write("Maximum states: ", info.maxStates, "\n")
+  strm.write("Path to the solution:\n")
   for p in info.path:
+    var line = ""
     for i, t in p.tails:
-      line &= $p.tails[i] & " "
-      if (i + 1) mod info.width == 0:
-        echo line; line = ""
-    echo ""
+      line &= $t & " "
+      if (i + 1) mod p.width == 0:
+        strm.write(line,"\n")
+        line = ""
+    strm.write("\n")
 
-proc show*(i: NPuzzleInfo) =
-  echo "Moves: ", i.path.len - 1
-  echo "Total number of states: ", i.totalStates
-  echo "Maximum states: ", i.maxStates
-  echo "Path to the solution: "
-  i.showPath()
+const
+  nodesLimit = 6_000_000
+  depthLimit = 500
 
 proc solve*(s: NPuzzle, ss: NPuzzleSettings, i: var NPuzzleInfo) =
-  const
-    depthLimit = 100
-    nodeLimit = 60
-
-  var openSet = initHeapQueue[NPuzzle]()
-  openSet.push s
-
-  var costSoFar = initTable[NPuzzle, int]()
-  costSoFar[s] = 0
-
-  var cameFrom = initTable[NPuzzle, NPuzzle]()
-  cameFrom[s] = (0, @[], 0)
-
-  var g = s.getGoal
-  while openSet.len > 0:
+  var opened = initHeapQueue[NPuzzle]()
+  opened.push s
+  var closed = initTable[NPuzzle, tuple[parent: NPuzzle, cost: int]]()
+  closed[s] = ((0, @[], 0), 0)
+  var goal = s.getGoal
+  var c = s
+  while c != goal:
     inc i.totalStates
-    if i.maxStates < openSet.len:
-      i.maxStates = openSet.len
-
-    let c = openSet.pop
-
-    if c == g:
-      g = c
-      break
-
-    if costSoFar[c] + 1 == depthLimit:
-      quit "Height limit exceeded!"
-
-    if openSet.len == nodeLimit:
-      while openSet.len > 1:
-        openSet.del(openSet.len - 1)
-
-    for n in c.neighbors:
-      var nn = n
-      let gScore = costSoFar[c] + 1
-      if not costSoFar.hasKey(nn) or gScore < costSoFar[nn]:
+    if i.maxStates < opened.len:
+      i.maxStates = opened.len
+    c = opened.pop
+    if closed[c].cost > depthLimit:
+      quit "Over depth limit!"
+    if opened.len > nodesLimit:
+      quit "Over nodes limit!"
+    for next in c.neighbors:
+      var n = next
+      let gScore = closed[c].cost + 1
+      if not closed.hasKey(n):
         case ss.g:
-        of Astar:
-          nn.priority = gScore + heuristic(n, ss.h)
-        of Greedy:
-          nn.priority = heuristic(n, ss.h)
-        of Uniform:
-          nn.priority = gScore
-        nn.priority
-        costSoFar[nn] = gScore
-        cameFrom[nn] = c
-        openSet.push nn
+        of Astar:   n.priority = gScore + hScore(n, ss.h)
+        of Greedy:  n.priority = hScore(n, ss.h)
+        of Uniform: n.priority = gScore
+        closed[n] = (c, gScore)
+        opened.push n
 
-  var c = g
-  i.width = s.width
+# Create path
   i.path = initDeque[NPuzzle]()
   while c != s:
-    i.path.addFirst cameFrom[c]
-    c = cameFrom[c]
-  i.path.addLast g
+    i.path.addFirst closed[c].parent
+    c = closed[c].parent
+  i.path.addLast goal
 
