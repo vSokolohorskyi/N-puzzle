@@ -12,7 +12,7 @@ proc getSettings*(ss: var NPuzzleSettings, k: string, v: string) =
      ss.h = parseEnum[Hfunc](v)
 
 proc isValid*(p: NPuzzle): bool =
-  if p.width <= 0 or p.tails.len mod p.width != 0:
+  if p.width < 3 or p.tails.len mod p.width != 0:
     return false
 
   var ts = p.tails
@@ -23,8 +23,8 @@ proc isValid*(p: NPuzzle): bool =
     return false
 
   var n = 0
-  while n < ts.len - 1:
-    if ts[n] == ts[n + 1]:
+  while n < ts.len:
+    if ts[n] != n:
       return false
     inc n
 

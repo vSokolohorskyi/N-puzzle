@@ -1,0 +1,4 @@
+Complexity in time: 0
+Complexity in size: 0
+Moves: -1
+Path:

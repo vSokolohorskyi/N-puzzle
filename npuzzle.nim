@@ -21,14 +21,16 @@ proc main() =
       quit helpMsg(), QuitSuccess
 
     let (ss, f) = parseInput[NPuzzleSettings] clp
-    let p = parseNPuzzle f
-    if not p.isValid:
+    let s = parseNPuzzle f
+    if not s.isValid:
       quit invalidMsg()
-    if not p.isSolvable:
+
+    let g = getGoal s
+    if not s.isSolvable(g):
       quit unsolvableMsg()
 
     var i: NPuzzleInfo
-    solve(p, ss, i)
+    solve(s, g, ss, i)
     i.show()
 
   except Exception as e:
