@@ -7,7 +7,7 @@ const
 task defaultTask, "Compiles binary":
   discard shell(nimExe, "c", "-d:release", ExeName)
 
-task "verbose", "Compile execubale with verbose flag":
+task "verbose", "Compile executable with verbose flag":
   discard shell(nimExe, "c", "-d:release", "-d:verbose", ExeName)
 
 task "clean", "Deletes all exec and res files":
@@ -22,27 +22,27 @@ task "run-tests", "Builds and executes test":
     echo "--> UNSOLVABLE: "
     var iters = 10
     var sizes = 7
-    var fileName = ""
+    var file = ""
     for i in 1..iters:
       for j in 3..sizes:
-        fileName = $i & "_" & $j
-        discard shell("python", PyExe, "-u", "-i " & $i, $j, ">", "u/"&fileName)
+        file = $i & "_" & $j
+        discard shell("python", PyExe, "-u", "-i " & $i, $j, ">", "u/"&file)
     for i in 1..iters:
       for j in 3..sizes:
-        fileName = $i & "_" & $j
-        discard shell("./npuzzle", "u/"&fileName, ">", "u/sol/"&filename)
+        file = $i & "_" & $j
+        discard shell("./npuzzle", "u/"&file, ">", "u/sol/"&file)
 
   block solvable:
     echo "--> SOLVABLE: "
     var iters = 10
     var sizes = 7
-    var fileName = ""
+    var file = ""
     for i in 1..iters:
       for j in 3..sizes:
-        fileName = $i & "_" & $j
-        discard shell("python", PyExe, "-s", "-i " & $i, $j, ">", "s/"&fileName)
+        file = $i & "_" & $j
+        discard shell("python", PyExe, "-s", "-i " & $i, $j, ">", "s/"&file)
     for i in 1..iters:
       for j in 3..sizes:
-        fileName = $i & "_" & $j
-        discard shell("./npuzzle", "s/"&fileName, ">", "s/sol/"&filename)
+        file = $i & "_" & $j
+        discard shell("./npuzzle", "s/"&file, ">", "s/sol/"&file)
 
