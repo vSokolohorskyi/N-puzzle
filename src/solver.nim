@@ -1,17 +1,14 @@
 import deques, hashes, tables, heapqueue, math, streams
 import types
 
-proc pp(p: NPuzzle) =
-  echo p
-  var line = ""
-  for i, t in p.tails:
-    line &= $t & " "
-    if (i + 1) mod p.width == 0:
-      echo line
-      line = ""
-
-proc even(n: int): bool = n mod 2 == 0
-proc odd(n: int): bool = not even(n)
+when defined(verbose):
+  proc showPuzzle(p: NPuzzle) =
+    var line = ""
+    for i, t in p.tails:
+      line &= $t & " "
+      if (i + 1) mod p.width == 0:
+        echo line
+        line = ""
 
 proc blankPos(p: NPuzzle): TailPos =
   var row, col = 0
@@ -41,14 +38,15 @@ proc invs(p: NPuzzle): int =
 
 proc isSolvable*(start, goal: NPuzzle): bool =
   when defined(verbose):
-    echo "Start inversions: ", start.invs
-    echo "Goal inversions: ", goal.invs
-    echo "Start's blank position != Goal's blank position: ", start.blankPos.row mod 2 != goal.blankPos.row mod 2
-  result = if start.width.odd:
+    echo "Parity(s, g) => ", start.invs mod 2 == goal.invs mod 2
+    echo "s.blank == g.blank: ", start.blankPos.row mod 2 == goal.blankPos.row mod 2
+  result = if start.width mod 2 != 0:
              start.invs mod 2 == goal.invs mod 2
            else:
-             start.invs mod 2 != goal.invs mod 2 and
-             start.blankPos.row mod 2 != goal.blankPos.row mod 2
+             if start.blankPos.row mod 2 == goal.blankPos.row mod 2:
+               start.invs mod 2 == goal.invs mod 2
+             else:
+               start.invs mod 2 != goal.invs mod 2
 
 proc getGoal*(p: Npuzzle): NPuzzle =
   var
@@ -74,21 +72,6 @@ proc getGoal*(p: Npuzzle): NPuzzle =
     col = minCol
     row = minRow
 
-#[
-proc getGoal(p: NPuzzle): NPuzzle =
-  var cp = p
-  cp.tails.sort do(x, y: int) -> int:
-    cmp(x, y)
-
-  var i = 0
-  while i < cp.tails.len - 1:
-    cp.tails[i] = cp.tails[i + 1]
-    inc i
-  cp.tails[^1] = 0
-
-  result = cp
-]#
-
 proc inRange(p: NPuzzle, t: TailPos): bool =
   t.row != -1 and t.row < p.tails.len div p.width and t.col != -1 and t.col < p.width
 
@@ -104,11 +87,12 @@ proc up(b: TailPos): TailPos = (b.row - 1, b.col)
 
 iterator neighbors(p: NPuzzle): NPuzzle =
   let b = p.blankPos
-  let sides = [b.left, b.right, b.down, b.up]
+  let sides = [('l', b.left), ('r', b.right), ('d', b.down), ('u', b.up)]
 
   for i in 0..3:
     var cp = p
-    if cp.swap(sides[i], b):
+    cp.side = sides[i][0]
+    if cp.swap(sides[i][1], b):
       yield cp
 
 proc `==`(a,b: NPuzzle): bool = a.tails == b.tails
@@ -145,7 +129,7 @@ proc euclidean(n: NPuzzle, t,r,c,w: int): int =
 
 proc hamming(n: NPuzzle, t,r,c,w: int): int  = 1
 
-proc core(n: NPuzzle, p: proc(n: NPuzzle, t, r, c, w: int): int): int =
+proc score(n: NPuzzle, p: proc(n: NPuzzle, t, r, c, w: int): int): int =
   var r, c = 0
   for i, t in n.tails:
     if i + 1 != t and t != 0:
@@ -156,12 +140,12 @@ proc core(n: NPuzzle, p: proc(n: NPuzzle, t, r, c, w: int): int): int =
     else:
       inc c
 
-proc hScore(n: NPuzzle, h: Hfunc): int {.inline.} =
+proc hScore(n: NPuzzle, h: Heuristic): int {.inline.} =
   let hs = [($Manhattan, manhattan), ($LcManhattan, lcmanhattan),
             ($Euclidean, euclidean), ($Hamming, hamming)]
   for (k, p) in hs:
     if k == $h:
-      return core(n, p)
+      return score(n, p)
 
 proc show*(info: NPuzzleInfo) =
   var strm = newFileStream("solution.txt", fmWrite)
@@ -170,6 +154,19 @@ proc show*(info: NPuzzleInfo) =
   echo "Moves: ", info.path.len - 1
   echo "Path to the goal written to \"solution.txt\""
   strm.write("Path:\n")
+  strm.write("[")
+  var i = 0
+  while i < info.path.len:
+    let s = info.path[i].side
+    if s == '\0':
+      inc i
+      continue
+    if i + 1 == info.path.len:
+      strm.write(s)
+    else:
+      strm.write(s&"->")
+    inc i
+  strm.write("]\n")
   for p in info.path:
     var line = ""
     for i, t in p.tails:
@@ -179,7 +176,6 @@ proc show*(info: NPuzzleInfo) =
         line = ""
     strm.write("\n")
 
-
 const
   nodesLimit = 700_000
   depthLimit = 500
@@ -188,7 +184,7 @@ proc solve*(start, goal: NPuzzle, ss: NPuzzleSettings, i: var NPuzzleInfo) =
   var opened = initHeapQueue[NPuzzle]()
   opened.push start
   var closed = initTable[NPuzzle, tuple[parent: NPuzzle, cost: int]]()
-  closed[start] = ((0, @[], 0), 0)
+  closed[start] = ((0, @[], 0, '0'), 0)
   var c: Npuzzle
   while opened.len > 0:
     inc i.totalStates
@@ -205,7 +201,7 @@ proc solve*(start, goal: NPuzzle, ss: NPuzzleSettings, i: var NPuzzleInfo) =
       var n = next
       let gScore = closed[c].cost + 1
       if not closed.hasKey(n) or gScore < closed[n].cost:
-        case ss.g:
+        case ss.a:
         of Astar:   n.priority = gScore + hScore(n, ss.h)
         of Greedy:  n.priority = hScore(n, ss.h)
         of Uniform: n.priority = gScore

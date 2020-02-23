@@ -3,12 +3,18 @@ import os
 import src / [input_parser, parser, solver, types]
 
 template helpMsg: string =
-  """Usage: ./npuzzle -h:[m|h|lcm|e](-heuristic:type) file
+  """Usage: ./npuzzle -a:[a|g|u](-algorithm:type) -h:[m|h|lcm|e](-heuristic:type) file
 Where:
-     m: Manhattan
-     h: Hemming
-     lcm: Linear conflicts + Manhattan
-     e: Euclidean
+     Algorithms:
+      a: A-star
+      g: Greedy-best-first
+      u: Uniform-cost-search/Dijkstra
+
+     Heuristics:
+       m: Manhattan
+       h: Hemming
+       lcm: Linear conflicts + Manhattan
+       e: Euclidean
   """
 
 template invalidMsg: string = "Invalid puzzle"

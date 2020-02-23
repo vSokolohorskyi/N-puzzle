@@ -2,14 +2,13 @@ import strutils, pegs, sequtils, algorithm
 import types
 
 proc getSettings*(ss: var NPuzzleSettings, k: string, v: string) =
-  let gfuncs = [$Astar, $Greedy, $Uniform]
-  let hfuncs = [$Manhattan, $Hamming, $LcManhattan, $Euclidean]
+  let algos = [$Astar, $Greedy, $Uniform]
+  let heurs = [$Manhattan, $Hamming, $LcManhattan, $Euclidean]
 
-  if k == "g" and v in gfuncs:
-    if v != $ss.g:
-      ss.g = parseEnum[Gfunc](v)
-  elif k == "h" and v in hfuncs:
-     ss.h = parseEnum[Hfunc](v)
+  if k == "a" and v in algos:
+    ss.a = parseEnum[Algorithm](v)
+  elif k == "h" and v in heurs:
+    ss.h = parseEnum[Heuristic](v)
 
 proc isValid*(p: NPuzzle): bool =
   if p.width < 3 or p.tails.len mod p.width != 0:

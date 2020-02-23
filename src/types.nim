@@ -1,19 +1,19 @@
 import deques
 type
-  Gfunc* {.pure.} = enum
+  Algorithm* {.pure.} = enum
     Astar = "a"
     Greedy = "g"
     Uniform = "u"
 
-  Hfunc* {.pure.} = enum
+  Heuristic* {.pure.} = enum
     Manhattan = "m"
     Hamming = "h"
     LcManhattan = "lcm"
     Euclidean = "e"
 
   NPuzzleSettings* = tuple
-    g: Gfunc
-    h: Hfunc
+    a: Algorithm
+    h: Heuristic
 
   TailPos* = tuple[row, col: int]
   Tails* = seq[int]
@@ -22,6 +22,7 @@ type
     width: int
     tails: Tails
     priority: int
+    side: char
 
   NPuzzleInfo* = tuple
     width: int
