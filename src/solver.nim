@@ -1,5 +1,14 @@
-import deques, hashes, tables, heapqueue, algorithm, math, streams
+import deques, hashes, tables, heapqueue, math, streams
 import types
+
+proc pp(p: NPuzzle) =
+  echo p
+  var line = ""
+  for i, t in p.tails:
+    line &= $t & " "
+    if (i + 1) mod p.width == 0:
+      echo line
+      line = ""
 
 proc even(n: int): bool = n mod 2 == 0
 proc odd(n: int): bool = not even(n)
@@ -31,13 +40,15 @@ proc invs(p: NPuzzle): int =
     result += inv
 
 proc isSolvable*(start, goal: NPuzzle): bool =
-  echo "start inversions: ", start.invs
-  echo "goal inversions: ", goal.invs
-  if start.width.odd:
-    return start.invs mod 2 == goal.invs mod 2
-  else:
-    # TO DO:
-    #return start.blankPos.row.odd xor start.invs.even
+  when defined(verbose):
+    echo "Start inversions: ", start.invs
+    echo "Goal inversions: ", goal.invs
+    echo "Start's blank position != Goal's blank position: ", start.blankPos.row mod 2 != goal.blankPos.row mod 2
+  result = if start.width.odd:
+             start.invs mod 2 == goal.invs mod 2
+           else:
+             start.invs mod 2 != goal.invs mod 2 and
+             start.blankPos.row mod 2 != goal.blankPos.row mod 2
 
 proc getGoal*(p: Npuzzle): NPuzzle =
   var
@@ -45,25 +56,23 @@ proc getGoal*(p: Npuzzle): NPuzzle =
     col, row, minCol, minRow = 0
     maxCol, maxRow = p.width - 1
     w = p.width
-    g: NPuzzle
-  g.tails.setLen(w^2)
-  g.width = w
+  result.tails.setLen(w^2)
+  result.width = w
   while t < w^2:
     while t < w^2 and col < maxCol: # right
-      g.tails[w*row + col] = t; inc t; inc col
+      result.tails[w*row + col] = t; inc t; inc col
     while t < w^2 and row < maxRow: # down
-      g.tails[w*row + col] = t; inc t; inc row
+      result.tails[w*row + col] = t; inc t; inc row
     while t < w^2 and col > minCol: # left
-      g.tails[w*row + col] = t; inc t; dec col
+      result.tails[w*row + col] = t; inc t; dec col
     while t < w^2 and row > minRow: # up
-      g.tails[w*row + col] = t; inc t; dec row
+      result.tails[w*row + col] = t; inc t; dec row
     dec maxCol
     dec maxRow
     inc minCol
     inc minRow
     col = minCol
     row = minRow
-  result = g
 
 #[
 proc getGoal(p: NPuzzle): NPuzzle =
@@ -81,8 +90,7 @@ proc getGoal(p: NPuzzle): NPuzzle =
 ]#
 
 proc inRange(p: NPuzzle, t: TailPos): bool =
-  t.row != -1 and t.row < p.tails.len div p.width and
-  t.col != -1 and t.col < p.width
+  t.row != -1 and t.row < p.tails.len div p.width and t.col != -1 and t.col < p.width
 
 proc swap(p: var NPuzzle, a, b: TailPos): bool =
   if p.inRange(a) and p.inRange(b):
@@ -157,9 +165,10 @@ proc hScore(n: NPuzzle, h: Hfunc): int {.inline.} =
 
 proc show*(info: NPuzzleInfo) =
   var strm = newFileStream("solution.txt", fmWrite)
-  strm.write("Complexity in time: ", info.totalStates, "\n")
-  strm.write("Complexity in size: ", info.maxStates, "\n")
-  strm.write("Moves: ", info.path.len - 1, "\n")
+  echo "Complexity in time: ", info.totalStates
+  echo "Complexity in size: ", info.maxStates
+  echo "Moves: ", info.path.len - 1
+  echo "Path to the goal written to \"solution.txt\""
   strm.write("Path:\n")
   for p in info.path:
     var line = ""
@@ -170,24 +179,12 @@ proc show*(info: NPuzzleInfo) =
         line = ""
     strm.write("\n")
 
-import os
-proc pp(p: NPuzzle) =
-  echo p
-  var line = ""
-  for i, t in p.tails:
-    line &= $t & " "
-    if (i + 1) mod p.width == 0:
-      echo line
-      line = ""
-  #sleep(3000)
-  #discard execShellCmd("clear")
 
 const
-  nodesLimit = 600_000
-  depthLimit = 100
+  nodesLimit = 700_000
+  depthLimit = 500
 
 proc solve*(start, goal: NPuzzle, ss: NPuzzleSettings, i: var NPuzzleInfo) =
-  pp goal
   var opened = initHeapQueue[NPuzzle]()
   opened.push start
   var closed = initTable[NPuzzle, tuple[parent: NPuzzle, cost: int]]()
@@ -204,9 +201,6 @@ proc solve*(start, goal: NPuzzle, ss: NPuzzleSettings, i: var NPuzzleInfo) =
       quit "Over depth limit!"
     if opened.len > nodesLimit:
       quit "Over nodes limit!"
-#    echo "Current: "
-#    echo "Depth: ", closed[c].cost
-#    pp c
     for next in c.neighbors:
       var n = next
       let gScore = closed[c].cost + 1
@@ -217,13 +211,10 @@ proc solve*(start, goal: NPuzzle, ss: NPuzzleSettings, i: var NPuzzleInfo) =
         of Uniform: n.priority = gScore
         closed[n] = (c, gScore)
         opened.push n
-#        echo "Child: "
-#        echo "Depth: ", gScore
-#        pp n
 
 # Create path
   i.path = initDeque[NPuzzle]()
   while c != start:
     i.path.addFirst c
     c = closed[c].parent
-  #i.path.addLast goal
+  i.path.addFirst c
