@@ -58,7 +58,8 @@ proc getGoal*(p: Npuzzle): NPuzzle =
   result.width = w
   while t < w^2:
     while t < w^2 and col < maxCol: # right
-      result.tails[w*row + col] = t; inc t; inc col
+      result.tails[w*row + col] = t;
+      inc t; inc col
     while t < w^2 and row < maxRow: # down
       result.tails[w*row + col] = t; inc t; inc row
     while t < w^2 and col > minCol: # left
@@ -105,47 +106,61 @@ proc hash(n: Npuzzle): Hash =
 proc getCol(x, w: int): int = (x - 1) mod w
 proc getRow(x, w: int): int = (x - 1) div w
 
-proc manhattan(n: NPuzzle, t,r,c,w: int): int =
-  abs(r - getRow(t, w)) + abs(c - getCol(t, w))
+proc getTailPos(g: NPuzzle, x: int): TailPos =
+  var row, col = 0
+  for i, t in g.tails:
+    if t == x:
+      return (row, col)
 
-proc lcAux(n: NPuzzle, t,r,c,w: int): int =
+    if (i + 1) mod g.width == 0:
+      inc row
+      col = 0
+    else:
+      inc col
+
+proc manhattan(n,g: NPuzzle, t,r,c,w: int): int =
+  let (gr, gc) = g.getTailPos t
+  abs(r - gr + abs(c - gc))
+
+proc lcAux(n,g: NPuzzle, t,r,c,w: int): int =
   var rr = 0
   var cc = 0
-  let tr = getRow(t, w)
-  let tc = getCol(t, w)
+  let (tr, tc) = g.getTailPos t
   for i, tt in n.tails:
     if tt != 0 and t != tt:
       if c == cc or r == rr:
-        if tr == getRow(tt, w) or tc == getCol(tt, w):
+        let (ttr, ttc) = g.getTailPos tt
+        if tr == ttr or tc == ttc:
           if r * w + c > rr * w + cc and
-             tr * w + tc < getRow(tt,w) * w + getCol(tt,w):
+             tr * w + tc < ttr * w + ttc:
             inc result
 
-proc lcmanhattan(n: NPuzzle, t,r,c,w: int): int =
-  manhattan(n, t, r, c, w) + 2 * lcAux(n, t, r, c, w)
+proc lcmanhattan(n,g: NPuzzle, t,r,c,w: int): int =
+  manhattan(n, g, t, r, c, w) + 2 * lcAux(n, g, t, r, c, w)
 
-proc euclidean(n: NPuzzle, t,r,c,w: int): int =
-  (r - getRow(t, w))^2 + (c - getCol(t, w))^2
+proc euclidean(n,g: NPuzzle, t,r,c,w: int): int =
+  let (gr, gc) = g.getTailPos t
+  (r - gr)^2 + (c - gc)^2
 
-proc hamming(n: NPuzzle, t,r,c,w: int): int  = 1
+proc hamming(n,g: NPuzzle, t,r,c,w: int): int = 1
 
-proc score(n: NPuzzle, p: proc(n: NPuzzle, t, r, c, w: int): int): int =
+proc score(n,g: NPuzzle, p: proc(n,g: NPuzzle, t, r, c, w: int): int): int =
   var r, c = 0
   for i, t in n.tails:
     if i + 1 != t and t != 0:
-      result += p(n, t, r, c, n.width)
+      result += p(n, g, t, r, c, n.width)
 
     if (i + 1) mod n.width == 0:
       inc r; c = 0
     else:
       inc c
 
-proc hScore(n: NPuzzle, h: Heuristic): int {.inline.} =
+proc hScore(n,g: NPuzzle, h: Heuristic): int {.inline.} =
   let hs = [($Manhattan, manhattan), ($LcManhattan, lcmanhattan),
             ($Euclidean, euclidean), ($Hamming, hamming)]
   for (k, p) in hs:
     if k == $h:
-      return score(n, p)
+      return score(n, g, p)
 
 proc show*(info: NPuzzleInfo) =
   var strm = newFileStream("solution.txt", fmWrite)
@@ -177,8 +192,8 @@ proc show*(info: NPuzzleInfo) =
     strm.write("\n")
 
 const
-  nodesLimit = 700_000
-  depthLimit = 500
+  nodesLimit = 1_000_000
+  depthLimit = 1000
 
 proc solve*(start, goal: NPuzzle, ss: NPuzzleSettings, i: var NPuzzleInfo) =
   var opened = initHeapQueue[NPuzzle]()
@@ -202,8 +217,8 @@ proc solve*(start, goal: NPuzzle, ss: NPuzzleSettings, i: var NPuzzleInfo) =
       let gScore = closed[c].cost + 1
       if not closed.hasKey(n) or gScore < closed[n].cost:
         case ss.a:
-        of Astar:   n.priority = gScore + hScore(n, ss.h)
-        of Greedy:  n.priority = hScore(n, ss.h)
+        of Astar:   n.priority = gScore + hScore(n, goal, ss.h)
+        of Greedy:  n.priority = hScore(n, goal, ss.h)
         of Uniform: n.priority = gScore
         closed[n] = (c, gScore)
         opened.push n
